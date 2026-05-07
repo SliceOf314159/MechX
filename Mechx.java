@@ -1,3 +1,7 @@
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.*;
+
 public enum StatusZlecenia {
     NOWE,
     PRZYDZIELONE,
@@ -118,11 +122,6 @@ public class UslugaProsta implements SkladnikUslugi {
     }
 
     @Override
-    public String getNazwa() {
-        return this.nazwa;
-    }
-
-    @Override
     public Float obliczKoszt(Pojazd pojazd) {
         return 0.0f;
     }
@@ -144,11 +143,6 @@ public class UslugaZlozona implements SkladnikUslugi {
 
     public void usunSkladnik(SkladnikUslugi skladnik) {
         skladniki.remove(skladnik);
-    }
-
-    @Override
-    public String getNazwa() {
-        return this.nazwa;
     }
 
     @Override
