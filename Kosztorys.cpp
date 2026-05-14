@@ -141,7 +141,7 @@ int main() {
     nowaUsluga->zapiszWBazie(baza); // Zapis do bazy 
     kosztorys->dodajUsluge(nowaUsluga);
     
-    // 4. Dodanie rabatu
+    // Dodanie rabatu
     kosztorys->ustawRabat(10); // 10% rabatu
     
     // Obliczenie końcowego kosztu
@@ -149,3 +149,5 @@ int main() {
 
     return 0;
 }
+//OUTPUT
+//Koszt po rabacie: 763.2 zl
