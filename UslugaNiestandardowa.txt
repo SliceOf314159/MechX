@@ -1,0 +1,38 @@
+@startuml tworzenie_uslugi_niestandardowej
+
+actor "BOK" as BOK
+boundary "Widok" as UI <<boundary>>
+control "System" as Sys <<control>>
+entity "nowaUsluga : UslugaProsta" as Usluga <<entity>>
+entity "nowaCzesc : Czesc" as Czesc <<entity>>
+database "baza : BazaUslug" as DB <<entity>>
+entity "kosztorys : Kosztorys" as Kosztorys <<entity>>
+
+BOK -> UI: wprowadzDaneUslugi()
+UI -> Sys: rozpocznijTworzenieUslugi()
+Sys -> Usluga: <<create>> UslugaProsta(n, cena)
+
+loop dla każdej wymaganej części
+    BOK -> UI: wprowadzDaneCzesci()
+    UI -> Sys: dodajNowaCzesc()
+    Sys -> Czesc: <<create>> Czesc(n, marka, cena, ilosc)
+    Sys -> Usluga: dodajCzesc(czesc)
+end
+
+opt użytkownik chce zapisać usługę w bazie
+    BOK -> UI: zapiszWBazie()
+    UI -> Sys: zapiszUsluge(usluga)
+    Sys -> Usluga: zapiszWBazie(baza)
+    Usluga -> DB: dodajDoBazy(nowaUsluga)
+    DB --> Usluga: ok
+    Usluga --> Sys: ok
+end
+
+BOK -> UI: zatwierdz()
+UI -> Sys: dodajDoKosztorysu()
+Sys -> Kosztorys: dodajUsluge(nowaUsluga)
+Kosztorys --> Sys: ok
+Sys --> UI: ok
+UI --> BOK: potwierdzenie
+
+@enduml

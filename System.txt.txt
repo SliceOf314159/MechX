@@ -1,0 +1,67 @@
+@startuml kosztorys_main
+
+actor "BOK" as BOK
+boundary "Widok" as UI <<boundary>>
+control "System" as Sys <<control>>
+database "baza : BazaUslug" as DB <<entity>>
+entity "kosztorys : Kosztorys" as Kosztorys <<entity>>
+entity "usluga : UslugaProsta" as Usluga <<entity>>
+
+BOK -> UI: otworzKosztorys()
+UI -> Sys: utworzKosztorys()
+Sys -> Kosztorys: <<create>> Kosztorys()
+
+loop dla każdej usługi którą chce dodać
+
+    BOK -> UI: wybierzModel(model)
+    UI -> Sys: pobierzUslugiDlaModelu(model)
+    Sys -> DB: pobierzDlaModelu(model)
+    DB --> Sys: vector<UslugaProsta>
+    Sys --> UI: listaUslug
+
+    alt listaUslug nie jest pusta
+
+        UI --> BOK: wyswietlListe(listaUslug)
+
+        alt użytkownik wybiera usługę predefiniowaną
+
+            BOK -> UI: wybierzUsluge(indeks)
+            UI -> Sys: dodajUslugePredefiniowana(indeks)
+            Sys -> Kosztorys: dodajUsluge(usluga)
+            Kosztorys --> Sys: ok
+            Sys --> UI: ok
+            UI --> BOK: potwierdzenie
+
+        else użytkownik tworzy usługę niestandardową
+
+            ref over BOK, UI, Sys, DB, Kosztorys, Usluga
+                tworzenie_uslugi_niestandardowej
+            end ref
+
+        end
+
+    else listaUslug jest pusta
+
+        UI --> BOK: brakUslugDlaModelu()
+
+        ref over BOK, UI, Sys, DB, Kosztorys, Usluga
+            tworzenie_uslugi_niestandardowej
+        end ref
+
+    end
+
+end
+
+BOK -> UI: ustawRabat(procent)
+UI -> Sys: ustawRabat(procent)
+Sys -> Kosztorys: ustawRabat(procent)
+Kosztorys --> Sys: ok
+
+BOK -> UI: obliczKoszt()
+UI -> Sys: obliczKoszt()
+Sys -> Kosztorys: obliczKoszt()
+Kosztorys --> Sys: koszt
+Sys --> UI: koszt
+UI --> BOK: wyswietlKoszt(koszt)
+
+@enduml
