@@ -15,7 +15,7 @@ Sys -> Usluga: <<create>> UslugaProsta(n, cena)
 loop dla każdej wymaganej części
     BOK -> UI: wprowadzDaneCzesci()
     UI -> Sys: dodajNowaCzesc()
-    Sys -> Czesc: <<create>> Czesc(n, marka, cena, ilosc)
+    Sys -> Czesc: <<create>> Czesc(n, producent, cena, ilosc)
     Sys -> Usluga: dodajCzesc(czesc)
 end
 
