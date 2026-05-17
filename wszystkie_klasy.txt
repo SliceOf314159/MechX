@@ -1,0 +1,378 @@
+// ===== include/Pojazd.h =====
+#pragma once
+#include <string>
+
+class Pojazd {
+public:
+    std::string model;
+    std::string marka;
+
+    Pojazd(std::string marka, std::string model);
+
+    bool pasuje(const std::string& wzorzecModelu) const;
+};
+
+// ===== include/Czesc.h =====
+#pragma once
+#include <string>
+#include <vector>
+
+class Czesc {
+public:
+    std::string nazwa;
+    std::string producent;
+    float cena_bazowa;
+    int ilosc;
+    std::vector<std::string> modele;
+
+    Czesc(std::string nazwa, std::string producent, float cena, int ilosc,
+          std::vector<std::string> modele = {});
+
+    bool operator<(const Czesc& inna) const;
+
+    bool czyUniwersalna() const;
+    bool pasujeDo(const std::string& model) const;
+};
+
+// ===== include/StanowiskoNaprawcze.h =====
+#pragma once
+#include <string>
+
+class StanowiskoNaprawcze {
+public:
+    int id;
+    std::string nazwa;
+    bool dostepne;
+
+    StanowiskoNaprawcze(int id, std::string nazwa);
+
+    void ustawDostepnosc(bool dostepne);
+    bool czyDostepne() const;
+};
+
+// ===== include/SkladnikUslugi.h =====
+#pragma once
+#include <string>
+#include <memory>
+
+class Pojazd;
+
+class SkladnikUslugi {
+public:
+    virtual ~SkladnikUslugi() = default;
+
+    virtual float obliczKoszt(std::shared_ptr<Pojazd> pojazd = nullptr) = 0;
+    virtual std::string getNazwa() const = 0;
+};
+
+// ===== include/UslugaProsta.h =====
+#pragma once
+#include "SkladnikUslugi.h"
+#include "Czesc.h"
+#include "StanowiskoNaprawcze.h"
+#include <map>
+#include <vector>
+#include <string>
+#include <memory>
+
+class BazaUslug;
+
+class UslugaProsta : public SkladnikUslugi, public std::enable_shared_from_this<UslugaProsta> {
+private:
+    std::string nazwa;
+    std::string model;
+    float cena_bazowa_robocizny;
+    int szacowany_czas_min;
+    std::map<Czesc, int> wymagane_czesci;
+    std::vector<std::shared_ptr<StanowiskoNaprawcze>> stanowiska;
+    std::map<std::string, float> ceny_dla_modeli;
+
+public:
+    UslugaProsta(std::string nazwa, float cena, std::string model = "");
+
+    void dodajCzesc(const Czesc& czesc);
+    void ustawCzasNaprawy(int minuty);
+    void dodajStanowisko(std::shared_ptr<StanowiskoNaprawcze> stanowisko);
+    void ustawCeneDlaModelu(const std::string& model, float cena);
+
+    float obliczKoszt(std::shared_ptr<Pojazd> pojazd = nullptr) override;
+    std::string getNazwa() const override;
+    std::string getModel() const;
+    int getSzacowanyCzas() const;
+
+    void zapiszWBazie(BazaUslug& baza);
+};
+
+// ===== include/UslugaZlozna.h =====
+#pragma once
+#include "SkladnikUslugi.h"
+#include <vector>
+#include <string>
+#include <memory>
+
+class UslugaZlozna : public SkladnikUslugi {
+private:
+    std::string nazwa;
+    std::vector<std::shared_ptr<SkladnikUslugi>> skladniki;
+
+public:
+    UslugaZlozna(std::string nazwa);
+
+    void dodajSkladnik(std::shared_ptr<SkladnikUslugi> skladnik);
+    void usunSkladnik(std::shared_ptr<SkladnikUslugi> skladnik);
+
+    float obliczKoszt(std::shared_ptr<Pojazd> pojazd = nullptr) override;
+    std::string getNazwa() const override;
+};
+
+// ===== include/BazaUslug.h =====
+#pragma once
+#include <vector>
+#include <memory>
+#include <string>
+
+class UslugaProsta;
+
+class BazaUslug {
+private:
+    std::vector<std::shared_ptr<UslugaProsta>> dane;
+
+public:
+    void dodajDoBazy(std::shared_ptr<UslugaProsta> usluga);
+    std::vector<std::shared_ptr<UslugaProsta>> pobierzDlaModelu(const std::string& model);
+};
+
+// ===== include/Kosztorys.h =====
+#pragma once
+#include "SkladnikUslugi.h"
+#include <vector>
+#include <memory>
+
+class Pojazd;
+
+class Kosztorys {
+private:
+    int kosztorys_id;
+    float koszt_calkowity;
+    float rabat_procentowy;
+    std::vector<std::shared_ptr<SkladnikUslugi>> skladnikiUslugi;
+
+public:
+    Kosztorys();
+
+    void ustawRabat(float rabat);
+    void dodajUsluge(std::shared_ptr<SkladnikUslugi> skladnik);
+    float obliczKoszt(std::shared_ptr<Pojazd> pojazd = nullptr);
+};
+
+// ===== src/Pojazd.cpp =====
+#include "Pojazd.h"
+
+Pojazd::Pojazd(std::string marka, std::string model)
+    : marka(std::move(marka)), model(std::move(model)) {}
+
+bool Pojazd::pasuje(const std::string& wzorzecModelu) const {
+    if (wzorzecModelu.empty()) return true;
+    return model == wzorzecModelu || marka == wzorzecModelu;
+}
+
+// ===== src/Czesc.cpp =====
+#include "Czesc.h"
+#include <algorithm>
+
+Czesc::Czesc(std::string nazwa, std::string producent, float cena, int ilosc,
+             std::vector<std::string> modele)
+    : nazwa(std::move(nazwa)), producent(std::move(producent)),
+      cena_bazowa(cena), ilosc(ilosc), modele(std::move(modele)) {}
+
+bool Czesc::operator<(const Czesc& inna) const {
+    if (nazwa != inna.nazwa) return nazwa < inna.nazwa;
+    return producent < inna.producent;
+}
+
+bool Czesc::czyUniwersalna() const {
+    return modele.empty();
+}
+
+bool Czesc::pasujeDo(const std::string& model) const {
+    if (czyUniwersalna()) return true;
+    return std::find(modele.begin(), modele.end(), model) != modele.end();
+}
+
+// ===== src/StanowiskoNaprawcze.cpp =====
+#include "StanowiskoNaprawcze.h"
+
+StanowiskoNaprawcze::StanowiskoNaprawcze(int id, std::string nazwa)
+    : id(id), nazwa(std::move(nazwa)), dostepne(true) {}
+
+void StanowiskoNaprawcze::ustawDostepnosc(bool d) {
+    dostepne = d;
+}
+
+bool StanowiskoNaprawcze::czyDostepne() const {
+    return dostepne;
+}
+
+// ===== src/UslugaProsta.cpp =====
+#include "UslugaProsta.h"
+#include "BazaUslug.h"
+#include "Pojazd.h"
+
+UslugaProsta::UslugaProsta(std::string nazwa, float cena, std::string model)
+    : nazwa(std::move(nazwa)), cena_bazowa_robocizny(cena),
+      model(std::move(model)), szacowany_czas_min(0) {}
+
+void UslugaProsta::dodajCzesc(const Czesc& czesc) {
+    wymagane_czesci[czesc] += czesc.ilosc;
+}
+
+void UslugaProsta::ustawCzasNaprawy(int minuty) {
+    szacowany_czas_min = minuty;
+}
+
+void UslugaProsta::dodajStanowisko(std::shared_ptr<StanowiskoNaprawcze> stanowisko) {
+    stanowiska.push_back(std::move(stanowisko));
+}
+
+void UslugaProsta::ustawCeneDlaModelu(const std::string& m, float cena) {
+    ceny_dla_modeli[m] = cena;
+}
+
+float UslugaProsta::obliczKoszt(std::shared_ptr<Pojazd> pojazd) {
+    float robocizna = cena_bazowa_robocizny;
+    if (pojazd) {
+        auto it = ceny_dla_modeli.find(pojazd->model);
+        if (it != ceny_dla_modeli.end()) {
+            robocizna = it->second;
+        }
+    }
+    float suma = robocizna;
+    for (const auto& para : wymagane_czesci) {
+        suma += para.first.cena_bazowa * para.second;
+    }
+    return suma;
+}
+
+std::string UslugaProsta::getNazwa() const {
+    return nazwa;
+}
+
+std::string UslugaProsta::getModel() const {
+    return model;
+}
+
+int UslugaProsta::getSzacowanyCzas() const {
+    return szacowany_czas_min;
+}
+
+void UslugaProsta::zapiszWBazie(BazaUslug& baza) {
+    baza.dodajDoBazy(shared_from_this());
+}
+
+// ===== src/UslugaZlozna.cpp =====
+#include "UslugaZlozna.h"
+#include "Pojazd.h"
+#include <algorithm>
+
+UslugaZlozna::UslugaZlozna(std::string nazwa)
+    : nazwa(std::move(nazwa)) {}
+
+void UslugaZlozna::dodajSkladnik(std::shared_ptr<SkladnikUslugi> skladnik) {
+    skladniki.push_back(std::move(skladnik));
+}
+
+void UslugaZlozna::usunSkladnik(std::shared_ptr<SkladnikUslugi> skladnik) {
+    skladniki.erase(std::remove(skladniki.begin(), skladniki.end(), skladnik), skladniki.end());
+}
+
+float UslugaZlozna::obliczKoszt(std::shared_ptr<Pojazd> pojazd) {
+    float suma = 0.0f;
+    for (const auto& s : skladniki) {
+        suma += s->obliczKoszt(pojazd);
+    }
+    return suma;
+}
+
+std::string UslugaZlozna::getNazwa() const {
+    return nazwa;
+}
+
+// ===== src/BazaUslug.cpp =====
+#include "BazaUslug.h"
+#include "UslugaProsta.h"
+
+void BazaUslug::dodajDoBazy(std::shared_ptr<UslugaProsta> usluga) {
+    dane.push_back(std::move(usluga));
+}
+
+std::vector<std::shared_ptr<UslugaProsta>> BazaUslug::pobierzDlaModelu(const std::string& model) {
+    std::vector<std::shared_ptr<UslugaProsta>> wynik;
+    for (const auto& u : dane) {
+        if (u->getModel().empty() || u->getModel() == model) {
+            wynik.push_back(u);
+        }
+    }
+    return wynik;
+}
+
+// ===== src/Kosztorys.cpp =====
+#include "Kosztorys.h"
+#include "Pojazd.h"
+
+Kosztorys::Kosztorys()
+    : kosztorys_id(0), koszt_calkowity(0.0f), rabat_procentowy(0.0f) {}
+
+void Kosztorys::ustawRabat(float rabat) {
+    rabat_procentowy = rabat;
+}
+
+void Kosztorys::dodajUsluge(std::shared_ptr<SkladnikUslugi> skladnik) {
+    if (skladnik) {
+        skladnikiUslugi.push_back(std::move(skladnik));
+    }
+}
+
+float Kosztorys::obliczKoszt(std::shared_ptr<Pojazd> pojazd) {
+    float suma = 0.0f;
+    for (const auto& skladnik : skladnikiUslugi) {
+        suma += skladnik->obliczKoszt(pojazd);
+    }
+    if (rabat_procentowy > 0.0f) {
+        suma -= suma * (rabat_procentowy / 100.0f);
+    }
+    koszt_calkowity = suma;
+    return koszt_calkowity;
+}
+
+// ===== src/main.cpp =====
+#include <iostream>
+#include "BazaUslug.h"
+#include "Kosztorys.h"
+#include "UslugaProsta.h"
+#include "UslugaZlozna.h"
+#include "Czesc.h"
+#include "StanowiskoNaprawcze.h"
+#include "Pojazd.h"
+
+int main() {
+    BazaUslug baza;
+    auto kosztorys = std::make_shared<Kosztorys>();
+
+    baza.dodajDoBazy(std::make_shared<UslugaProsta>("Wymiana oleju", 100.0f, "Toyota Corolla"));
+
+    auto uslugi = baza.pobierzDlaModelu("Toyota Corolla");
+    if(!uslugi.empty()) {
+        kosztorys->dodajUsluge(uslugi[0]);
+    }
+
+    auto nowaUsluga = std::make_shared<UslugaProsta>("Usluga niestandardowa", 150.0f);
+    nowaUsluga->dodajCzesc(Czesc("Tarcze hamulcowe", "Bosch", 299.0f, 2));
+    nowaUsluga->zapiszWBazie(baza);
+    kosztorys->dodajUsluge(nowaUsluga);
+
+    kosztorys->ustawRabat(10);
+
+    std::cout << "Koszt po rabacie: " << kosztorys->obliczKoszt() << " zl\n";
+
+    return 0;
+}
